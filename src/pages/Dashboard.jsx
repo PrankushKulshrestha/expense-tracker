@@ -9,6 +9,7 @@ import ExpenseTable from "@/components/ExpenseTable";
 import AddExpenseForm from "@/components/AddExpenseForm";
 import { useExpenses } from "@/hooks/useExpenses";
 
+
 export default function Dashboard() {
   const {
     expenses, budgets, loading, error,
