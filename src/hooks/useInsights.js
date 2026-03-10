@@ -1,10 +1,9 @@
 import { useState, useEffect } from "react";
-
-const ML_API = import.meta.env.VITE_ML_API_URL || "http://localhost:8000";
+import { supabase } from "@/lib/supabase";
 
 export function useInsights(expenses, budgets) {
   const [insights, setInsights]         = useState([]);
-  const [mode, setMode]                 = useState(null);     // "heuristic" | "ml"
+  const [mode, setMode]                 = useState(null);
   const [monthsOfData, setMonthsOfData] = useState(0);
   const [loading, setLoading]           = useState(false);
   const [error, setError]               = useState(null);
@@ -19,26 +18,22 @@ export function useInsights(expenses, budgets) {
     setLoading(true);
     setError(null);
 
-    fetch(`${ML_API}/api/insights`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ expenses, budgets }),
-    })
-      .then((r) => {
-        if (!r.ok) throw new Error(`ML API error: ${r.status}`);
-        return r.json();
+    // Call Supabase Edge Function — no separate server needed
+    supabase.functions
+      .invoke("insights", {
+        body: { expenses, budgets: budgets ?? [] },
       })
-      .then((data) => {
+      .then(({ data, error: err }) => {
         if (cancelled) return;
-        setInsights(data.insights);
+        if (err) throw err;
+        setInsights(data.insights ?? []);
         setMode(data.mode);
         setMonthsOfData(data.months_of_data);
       })
       .catch((e) => {
         if (cancelled) return;
         setError(e.message);
-        // Silently degrade — app works fine without insights
-        console.warn("ML API unavailable:", e.message);
+        console.warn("Insights unavailable:", e.message);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
